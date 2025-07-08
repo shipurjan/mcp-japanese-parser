@@ -1,5 +1,5 @@
 #!/usr/bin/env node
 
-const obj: { name: string } = { name: "Matthew" };
+const obj: { name: string } = { name: 'Matthew' }
 
-console.log(obj);
+console.log(obj)
