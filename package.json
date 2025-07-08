@@ -1,0 +1,30 @@
+{
+  "name": "mcp-japanese-parser",
+  "version": "0.1.0",
+  "description": "",
+  "license": "AGPL-3.0-or-later",
+  "author": "Cyprian Zdebski <shipurjan@gmail.com> (https://github.com/shipurjan)",
+  "homepage": "https://github.com/shipurjan/mcp-japanese-parser#readme",
+  "bugs": "https://github.com/shipurjan/mcp-japanese-parser/issues",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/shipurjan/mcp-japanese-parser.git"
+  },
+  "type": "module",
+  "bin": {
+    "mcp-japanese-parser": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc && rollup -c && shx chmod +x dist/*.js",
+    "prepare": "npm run build",
+    "watch": "tsc --watch"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "1.15.0"
+  },
+  "devDependencies": {
+    "rollup": "4.44.2",
+    "shx": "0.4.0",
+    "typescript": "5.8.3"
+  }
+}
