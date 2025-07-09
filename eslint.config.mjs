@@ -10,20 +10,20 @@ const config = tseslint.config([
       'node_modules/**/*',
       'dist-tsc/**/*',
       'dist/**/*',
-      '*.config.*[t|j]s',
+      '*.config.mjs',
     ],
   },
   {
-    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    files: ['**/*.{js,mjs,ts}'],
     plugins: { js },
     extends: [js.configs.recommended],
   },
   {
-    files: ['**/*.{js,mjs,cjs,ts,mts,cts}'],
+    files: ['**/*.{js,mjs,ts}'],
     languageOptions: { globals: globals.node },
   },
   {
-    files: ['**/*.{ts,tsx,cts,mts}'],
+    files: ['**/*.{ts}'],
     languageOptions: {
       parser: eslintParserTypeScript,
       parserOptions: {

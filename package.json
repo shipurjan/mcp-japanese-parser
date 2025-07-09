@@ -16,10 +16,10 @@
   },
   "scripts": {
     "build": "tsc && rollup -c && shx chmod +x dist/*.js",
-    "prepare": "npm run build",
+    "prepare": "husky && npm run build",
     "watch": "tsc --watch",
-    "format": "prettier --write \"**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx,css,scss}\" && eslint \"src/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}\" --fix",
-    "lint": "eslint \"src/**/*.{js,mjs,cjs,ts,mts,cts,jsx,tsx}\" --quiet --cache",
+    "format": "prettier --write --cache . && eslint . --cache --fix",
+    "lint": "eslint . --cache --quiet",
     "lint:types": "tsc --skipLibCheck --noEmit"
   },
   "dependencies": {
@@ -34,6 +34,8 @@
     "eslint-config-prettier": "10.1.5",
     "eslint-plugin-prettier": "5.5.1",
     "globals": "16.3.0",
+    "husky": "9.1.7",
+    "lint-staged": "16.1.2",
     "prettier": "3.6.2",
     "rollup": "4.44.2",
     "shx": "0.4.0",
