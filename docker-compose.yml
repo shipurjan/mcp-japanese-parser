@@ -23,7 +23,7 @@ services:
       context: .
       dockerfile: Dockerfile.ichiran
       args:
-        ICHIRAN_GIT_COMMIT: '11d6e56' # Pinned commit - latest as of 2024
+        ICHIRAN_GIT_COMMIT: '11d6e56'
     depends_on:
       ichiran-db:
         condition: service_healthy
