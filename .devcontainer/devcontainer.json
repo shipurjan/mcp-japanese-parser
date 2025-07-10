@@ -1,4 +1,8 @@
 {
   "image": "mcr.microsoft.com/devcontainers/universal:3.0.3-linux",
-  "features": {}
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22.17.0"
+    }
+  }
 }
