@@ -1,0 +1,150 @@
+Thinking:
+```
+The user is asking about improving the developer experience (DX) and has four
+  specific questions:
+
+  1. CLI testing of MCP tools instead of GUI inspector - they want to write unit
+  tests
+  2. Better documentation of development docker compose with step-by-step
+  instructions
+  3. Source maps for better stack traces in development mode
+  4. General DX improvement ideas
+
+  They explicitly said "Do not start any code implementations yet" so I should only
+  analyze and answer their questions without making any code changes.
+
+  Let me address each question:
+
+  1. CLI testing of MCP tools: Yes, there are ways to test MCP tools from CLI. The
+  MCP TypeScript SDK provides ways to run tools programmatically. You can create
+  test scripts that import the server and call the tools directly, or use the MCP
+  inspector in headless mode, or create a simple CLI wrapper script.
+  2. Development docker compose: I should explain the current setup and provide
+  clear step-by-step instructions. Looking at the current docker-compose.yml, I can
+  see the services and explain how development mode would work.
+  3. Source maps: Good point! The current build process in package.json probably
+  doesn't include source maps. This would help with debugging runtime errors by
+  showing original TypeScript line numbers instead of compiled JavaScript.
+  4. Other DX improvements: I can suggest several improvements like:
+    - Hot reload for development
+    - Better logging and debugging
+    - Pre-commit hooks
+    - Better error messages
+    - Development scripts
+    - Testing framework setup
+    - Environment variable validation
+    - Health check endpoints
+    - Performance monitoring
+    - Documentation improvements
+
+  Let me provide detailed answers to each question.
+```
+
+● Excellent questions about improving the developer experience! Let me analyze each
+  one:
+
+  1. CLI Testing for MCP Tools (Unit Testing)
+
+  Yes, there are several ways to test MCP tools from CLI instead of the GUI
+  inspector:
+
+  Option A: Direct Tool Import & Testing
+  # Create test scripts that import and call tools directly
+  node -e "
+  import('./dist/index.js').then(async (server) => {
+    const result = await server.romanizeJapanese({text: 'こんにちは', scheme:
+  'hepburn'});
+    console.log(JSON.stringify(result, null, 2));
+  });
+  "
+
+  Option B: MCP Protocol Testing
+  # Send MCP protocol messages via stdio
+  echo '{"jsonrpc":"2.0","id":1,"method":"tools/call","params":{"name":"romanize_jap
+  anese","arguments":{"text":"こんにちは"}}}' | node dist/index.js
+
+  Option C: Test Framework Integration
+  - Create Jest/Mocha tests that import tools directly
+  - Mock the Ichiran client for faster unit tests
+  - Integration tests that hit real Ichiran for accuracy
+
+  2. Development Docker Compose Setup
+
+  Current gaps I see:
+  - No dedicated development compose file
+  - No hot reload for TypeScript changes
+  - No volume mounts for live code editing
+  - No development-specific environment variables
+
+  Should include:
+  # docker-compose.dev.yml
+  services:
+    mcp-server-dev:
+      build:
+        context: .
+        dockerfile: Dockerfile.dev  # New dev-specific Dockerfile
+      volumes:
+        - ./src:/app/src:ro  # Mount source for hot reload
+        - ./dist:/app/dist   # Mount dist for build output
+      environment:
+        - NODE_ENV=development
+        - DEBUG=mcp:*
+      command: npm run dev  # Hot reload command
+
+  3. Source Maps for Better Stack Traces
+
+  Current build process issues:
+  - TypeScript compilation likely doesn't generate source maps
+  - No source map support in runtime
+  - Stack traces show compiled JS instead of original TS
+
+  Need to add:
+  - Source map generation in build process
+  - Source map support in development mode
+  - Better error handling with original file/line info
+
+  4. Additional DX Improvement Ideas
+
+  Development Workflow:
+  - Hot reload - Automatic restart on TypeScript changes
+  - Watch mode - Continuous compilation during development
+  - Development logging - Verbose debug output with request/response details
+  - Environment validation - Check required env vars on startup
+
+  Testing & Quality:
+  - Unit test framework - Jest setup with TypeScript support
+  - Integration tests - End-to-end MCP protocol testing
+  - Mock mode - Fake Ichiran responses for faster testing
+  - Performance benchmarks - Track response times and memory usage
+
+  Developer Tools:
+  - CLI helper scripts - Easy commands for common tasks
+  - Health dashboard - Web interface showing service status
+  - Request logging - Save/replay tool requests for debugging
+  - Error reproduction - Capture failed requests for investigation
+
+  Code Quality:
+  - Pre-commit hooks - Lint/format before commits
+  - Type checking - Strict TypeScript configuration
+  - Code coverage - Track test coverage metrics
+  - Documentation generation - Auto-generate API docs
+
+  Configuration & Setup:
+  - Environment templates - .env.example with all variables
+  - Setup validation - Script to check prerequisites
+  - Quick start scripts - One-command setup for new developers
+  - Troubleshooting guides - Common issues and solutions
+
+  Monitoring & Debugging:
+  - Request tracing - Follow requests through the system
+  - Performance profiling - Identify bottlenecks
+  - Memory leak detection - Monitor resource usage
+  - Circuit breaker dashboard - Visualize service health
+
+  Would you like me to prioritize these improvements and start implementing them?
+  I'd suggest starting with:
+
+  1. Source maps + hot reload (immediate development comfort)
+  2. CLI testing framework (enables proper unit testing)
+  3. Development docker compose (streamlines setup)
+  4. Better logging & debugging (easier troubleshooting)
