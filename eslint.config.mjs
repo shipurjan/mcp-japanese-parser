@@ -42,6 +42,11 @@ const config = tseslint.config([
   },
   tseslint.configs.strictTypeChecked,
   tseslint.configs.stylisticTypeChecked,
+  {
+    rules: {
+      'no-control-regex': 0,
+    },
+  },
 ])
 
 export default config
