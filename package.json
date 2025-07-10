@@ -23,7 +23,9 @@
     "lint:types": "tsc --skipLibCheck --noEmit"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "1.15.0"
+    "@modelcontextprotocol/sdk": "1.15.0",
+    "zod": "3.25.76",
+    "zod-to-json-schema": "3.24.6"
   },
   "devDependencies": {
     "@eslint/js": "9.30.1",
