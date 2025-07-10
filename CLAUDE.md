@@ -981,6 +981,50 @@ LABEL ichiran.source="https://github.com/tshatrov/ichiran"
 
 ## Implementation References
 
+### Reference Implementation
+
+**Filesystem MCP Server (`/filesystem/`)**
+
+- **Purpose**: Complete reference implementation of a production-ready MCP server
+- **Location**: `/filesystem/` subdirectory in this repository
+- **Key Features**:
+  - Full MCP protocol implementation with TypeScript SDK
+  - Comprehensive tool set (read/write files, directory operations, search)
+  - Advanced features like selective file editing with diff preview
+  - Proper error handling and input validation
+  - Docker containerization support
+  - Complete test suite with Jest
+  - Roots protocol support for dynamic directory access control
+  - Production-ready configuration for multiple deployment methods
+
+**Architecture Lessons**:
+
+- **Server Structure**: Uses `@modelcontextprotocol/sdk` with proper TypeScript typing
+- **Tool Organization**: Each tool as separate function with Zod schema validation
+- **Error Handling**: Comprehensive error catching with descriptive messages
+- **Path Security**: Robust path validation to prevent directory traversal attacks
+- **Configuration**: Flexible configuration via command-line args and MCP roots protocol
+- **Testing**: Unit tests for utilities and integration tests for full workflows
+- **Docker Integration**: Multi-stage builds with proper security practices
+
+**Implementation Patterns to Follow**:
+
+- Tool input validation with Zod schemas
+- JSON schema generation with `zod-to-json-schema`
+- Proper async/await patterns for I/O operations
+- Resource cleanup and error recovery
+- Client capability detection and negotiation
+- Notification handling for dynamic updates
+
+**Key Files for Reference**:
+
+- `index.ts`: Main server implementation and tool definitions
+- `path-validation.ts`: Security utilities for path handling
+- `roots-utils.ts`: MCP roots protocol implementation
+- `package.json`: Dependencies and build configuration
+- `Dockerfile`: Container configuration
+- `__tests__/`: Comprehensive test suite
+
 ### Technical Resources
 
 - **MCP TypeScript SDK**: https://github.com/modelcontextprotocol/typescript-sdk
