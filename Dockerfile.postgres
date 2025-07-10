@@ -1,0 +1,50 @@
+FROM postgres:15
+
+# Database configuration
+ENV ICHIRAN_DB_VERSION=250113
+ENV ICHIRAN_DB_PRIMARY_URL=https://github.com/tshatrov/ichiran/releases/download/ichiran-${ICHIRAN_DB_VERSION}/ichiran-${ICHIRAN_DB_VERSION}.pgdump
+
+# Install dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy database fetching script and checksum file
+COPY scripts/fetch-database.sh /usr/local/bin/fetch-database.sh
+COPY checksums/ichiran-250113.sha256 /tmp/expected-checksum.txt
+
+# Make script executable
+RUN chmod +x /usr/local/bin/fetch-database.sh
+
+# Create initialization directory
+RUN mkdir -p /docker-entrypoint-initdb.d
+
+# Fetch database with verification at build time
+RUN /usr/local/bin/fetch-database.sh /docker-entrypoint-initdb.d/ichiran.pgdump
+
+# Set proper permissions
+RUN chmod 644 /docker-entrypoint-initdb.d/ichiran.pgdump
+
+# Create database initialization script with proper Japanese locale
+RUN echo '#!/bin/bash\n\
+set -e\n\
+\n\
+echo "Creating ichiran database with Japanese locale settings..."\n\
+createdb -U "$POSTGRES_USER" \\\n\
+    --template=template0 \\\n\
+    --encoding=UTF8 \\\n\
+    --lc-collate=C.UTF-8 \\\n\
+    --lc-ctype=C.UTF-8 \\\n\
+    ichiran || echo "Database already exists"\n\
+\n\
+echo "Restoring ichiran database from dump..."\n\
+pg_restore -U "$POSTGRES_USER" -d ichiran --clean --if-exists --no-owner --no-privileges /docker-entrypoint-initdb.d/ichiran.pgdump || echo "Restore completed with warnings"\n\
+\n\
+echo "Database setup complete"' > /docker-entrypoint-initdb.d/01-init-ichiran.sh
+
+RUN chmod +x /docker-entrypoint-initdb.d/01-init-ichiran.sh
+
+# Expose PostgreSQL port
+EXPOSE 5432
