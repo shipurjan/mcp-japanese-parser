@@ -10,7 +10,6 @@ const config = tseslint.config([
       'node_modules/**/*',
       'dist-tsc/**/*',
       'dist/**/*',
-      'filesystem/**/*',
       '*.config.mjs',
     ],
   },

@@ -24,7 +24,7 @@ import {
   analyzeKanji as ichiranAnalyzeKanji,
   parseJapaneseText as ichiranParseText,
   romanizeJapanese as ichiranRomanizeText,
-} from './ichiran-client.js'
+} from './ichiran.js'
 
 // Type definition for tool input schema
 type ToolInput = z.infer<typeof ToolSchema.shape.inputSchema>
@@ -264,9 +264,7 @@ async function healthCheck(): Promise<{
     text: string
   }[]
 }> {
-  const { healthCheck: ichiranHealthCheck } = await import(
-    './ichiran-client.js'
-  )
+  const { healthCheck: ichiranHealthCheck } = await import('./ichiran.js')
 
   const result = await withTimeout(
     ichiranHealthCheck(),

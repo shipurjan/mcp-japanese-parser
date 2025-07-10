@@ -1,4 +1,4 @@
-import { IchiranError } from './ichiran-client.js'
+import { IchiranError } from './ichiran.js'
 
 export interface ErrorResponse {
   content: {

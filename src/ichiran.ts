@@ -56,8 +56,6 @@ export interface RomanizeOptions {
   includeInfo?: boolean
 }
 
-// No mock mode - this MCP server only works with real Ichiran
-
 /**
  * Execute Ichiran CLI command
  */
