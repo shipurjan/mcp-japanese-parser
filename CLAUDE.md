@@ -633,6 +633,13 @@ ichiran-cli --help
 - `build`: Build production image
 - `docker:dev`: Start development environment
 
+**Development Workflow Rules**
+
+- **IMPORTANT**: Always run `npm run check` after making any code changes
+- This command runs formatting, linting, type checking, and tests
+- All checks must pass before committing changes
+- Fix any errors or warnings before proceeding to the next task
+
 ### Integration Specifications
 
 **MCP Client Configuration**

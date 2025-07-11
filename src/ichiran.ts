@@ -61,7 +61,13 @@ export interface RomanizeOptions {
  */
 async function executeIchiranCommand(args: string[]): Promise<string> {
   try {
-    const command = `docker exec ichiran-main-1 ./ichiran-cli ${args.join(' ')}`
+    // Use non-interactive mode for tests and CI environments
+    const isInteractive =
+      process.stdout.isTTY &&
+      !process.env.CI &&
+      !process.env.NODE_ENV?.includes('test')
+    const dockerFlags = isInteractive ? '-it' : ''
+    const command = `docker exec ${dockerFlags} ichiran-main-1 ichiran-cli ${args.join(' ')}`
     const { stdout, stderr } = await execAsync(command, {
       timeout: config.ichiranTimeout,
       maxBuffer: 1024 * 1024, // 1MB buffer
