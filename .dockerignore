@@ -1,0 +1,11 @@
+*.log
+node_modules
+dist-tsc
+coverage
+.git
+.gitignore
+README.md
+*.md
+.eslintcache
+.npm
+logs

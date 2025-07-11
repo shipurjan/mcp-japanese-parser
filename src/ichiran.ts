@@ -61,7 +61,7 @@ export interface RomanizeOptions {
  */
 async function executeIchiranCommand(args: string[]): Promise<string> {
   try {
-    const command = `docker exec mcp-japanese-parser-ichiran-main-1 ichiran-cli ${args.join(' ')}`
+    const command = `docker exec ichiran-main-1 ./ichiran-cli ${args.join(' ')}`
     const { stdout, stderr } = await execAsync(command, {
       timeout: config.ichiranTimeout,
       maxBuffer: 1024 * 1024, // 1MB buffer
@@ -101,7 +101,7 @@ async function executeIchiranCommand(args: string[]): Promise<string> {
 /**
  * Validate Japanese text input
  */
-function validateJapaneseText(text: string): void {
+export function validateJapaneseText(text: string): boolean {
   if (!text || typeof text !== 'string') {
     throw new IchiranError('Text must be a non-empty string', 'INVALID_INPUT')
   }
@@ -121,6 +121,8 @@ function validateJapaneseText(text: string): void {
       'INVALID_INPUT',
     )
   }
+
+  return true
 }
 
 /**

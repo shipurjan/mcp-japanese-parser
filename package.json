@@ -16,8 +16,10 @@
   },
   "scripts": {
     "build": "tsc && rollup -c && shx chmod +x dist/*.js",
-    "prepare": "husky && npm run build",
+    "prepare": "husky && npm run submodules && npm run build",
+    "submodules": "git submodule update --init --recursive",
     "watch": "tsc --watch",
+    "docker:build": "docker compose -f ichiran/docker-compose.yml -f docker-compose.yml up --force-recreate --no-deps --build",
     "format": "prettier --write --cache . && eslint . --cache --fix",
     "lint": "eslint . --cache --quiet",
     "lint:types": "tsc --skipLibCheck --noEmit",
