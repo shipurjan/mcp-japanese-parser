@@ -17,7 +17,7 @@ const config = {
     ],
   },
   testMatch: ['**/__tests__/**/*.test.ts'],
-  collectCoverageFrom: ['**/*.ts', '!**/__tests__/**', '!**/dist/**'],
+  collectCoverageFrom: ['**/*.ts', '!**/__tests__/**', '!**/build/**'],
 }
 
 export default config

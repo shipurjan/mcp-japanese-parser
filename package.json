@@ -12,18 +12,20 @@
   },
   "type": "module",
   "bin": {
-    "mcp-japanese-parser": "dist/index.js"
+    "mcp-japanese-parser": "build/index.js"
   },
   "scripts": {
-    "build": "tsc && rollup -c && shx chmod +x dist/*.js",
+    "inspector:cli": "npx @modelcontextprotocol/inspector@0.16.1 --cli node dist/index.js",
+    "inspector:gui": "NODE_OPTIONS='--enable-source-maps' npx @modelcontextprotocol/inspector@0.16.1 node dist/index.js",
+    "build": "npm run lint && tsc && rollup -c && shx chmod +x build/*.js",
     "prepare": "husky && npm run submodules && npm run build",
     "submodules": "git submodule update --init --recursive",
     "watch": "tsc --watch",
-    "docker:build": "docker compose -f ichiran/docker-compose.yml -f docker-compose.yml up --force-recreate --no-deps --build",
+    "docker:build": "npm run build && docker compose -f ichiran/docker-compose.yml -f docker-compose.yml up --build",
     "format": "prettier --write --cache . && eslint . --cache --fix",
     "lint": "eslint . --cache --quiet",
     "lint:types": "tsc --skipLibCheck --noEmit",
-    "test": "jest --config=jest.config.mjs --coverage",
+    "test": "npm run inspector:cli -- --method tools/call --tool-name health_check && jest --config=jest.config.mjs --coverage",
     "check": "npm run format && npm run lint && npm run lint:types && npm run test"
   },
   "dependencies": {

@@ -15,7 +15,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev --ignore-scripts
 
 # Copy built application
-COPY dist/ ./dist/
+COPY build/ ./build/
 
 # Create health check endpoint script
 RUN echo '#!/bin/bash\n\
@@ -36,4 +36,4 @@ HEALTHCHECK --interval=10s --timeout=5s --retries=3 \
     CMD /usr/local/bin/health-check
 
 # Default command
-CMD ["node", "dist/index.js"]
+CMD ["node", "build/index.js"]

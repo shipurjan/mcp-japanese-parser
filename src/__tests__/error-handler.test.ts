@@ -11,7 +11,6 @@ import {
   checkRateLimit,
   cleanupRateLimits,
   handleToolError,
-  logPerformanceMetric,
   sanitizeJapaneseText,
   validateToolInput,
   withTimeout,
@@ -383,36 +382,6 @@ describe('error-handler module', () => {
       process.env.MAX_TEXT_LENGTH = '5'
       const text = 'あ'.repeat(5)
       expect(sanitizeJapaneseText(text)).toBe(text)
-    })
-  })
-
-  describe('logPerformanceMetric', () => {
-    it('should log performance metrics with success', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {
-        /* mock */
-      })
-
-      logPerformanceMetric('test-operation', 100, true)
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/\[METRICS\] .+ test-operation SUCCESS 100ms/),
-      )
-
-      consoleSpy.mockRestore()
-    })
-
-    it('should log performance metrics with failure', () => {
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {
-        /* mock */
-      })
-
-      logPerformanceMetric('test-operation', 200, false)
-
-      expect(consoleSpy).toHaveBeenCalledWith(
-        expect.stringMatching(/\[METRICS\] .+ test-operation FAILURE 200ms/),
-      )
-
-      consoleSpy.mockRestore()
     })
   })
 

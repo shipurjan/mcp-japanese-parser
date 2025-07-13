@@ -1,7 +1,7 @@
 coverage
 node_modules
-dist-tsc
 dist
+build
 
 *.tsbuildinfo
 .npm

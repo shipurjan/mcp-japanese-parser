@@ -3,9 +3,9 @@ import terser from '@rollup/plugin-terser'
 
 /** @type {import('rollup').RollupOptions} */
 const config = {
-  input: 'dist-tsc/src/index.js',
+  input: 'dist/index.js',
   output: {
-    file: 'dist/index.js',
+    file: 'build/index.js',
     format: 'esm',
   },
   external: [

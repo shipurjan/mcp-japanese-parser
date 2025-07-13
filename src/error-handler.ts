@@ -80,11 +80,7 @@ export function handleToolError(
   }
 
   if (error instanceof Error) {
-    // Don't expose internal error details in production
-    const isDevelopment = process.env.NODE_ENV === 'development'
-    const message = isDevelopment
-      ? `Internal Error: ${error.message}\n${error.stack ?? ''}`
-      : 'An internal error occurred. Please try again.'
+    const message = `Internal Error: ${error.message}\n${error.stack ?? ''}`
 
     return {
       content: [
@@ -161,22 +157,6 @@ export function sanitizeJapaneseText(text: string): string {
   }
 
   return sanitized
-}
-
-/**
- * Log performance metrics
- */
-export function logPerformanceMetric(
-  operation: string,
-  duration: number,
-  success: boolean,
-): void {
-  const timestamp = new Date().toISOString()
-  const status = success ? 'SUCCESS' : 'FAILURE'
-
-  console.error(
-    `[METRICS] ${timestamp} ${operation} ${status} ${duration.toString()}ms`,
-  )
 }
 
 /**

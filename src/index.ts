@@ -13,7 +13,6 @@ import {
   CircuitBreaker,
   checkRateLimit,
   handleToolError,
-  logPerformanceMetric,
   sanitizeJapaneseText,
   validateToolInput,
   withTimeout,
@@ -125,7 +124,6 @@ server.setRequestHandler(ListToolsRequestSchema, () => {
 // Call tool handler with enhanced error handling
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params
-  const startTime = Date.now()
 
   try {
     // Rate limiting check
@@ -164,10 +162,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         throw new Error(`Unknown tool: ${name}`)
     }
 
-    logPerformanceMetric(name, Date.now() - startTime, true)
     return result
   } catch (error) {
-    logPerformanceMetric(name, Date.now() - startTime, false)
     return handleToolError(error, name)
   }
 })

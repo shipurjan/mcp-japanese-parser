@@ -8,9 +8,9 @@
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
     "resolveJsonModule": true,
-    "outDir": "./dist-tsc",
-    "rootDir": "."
-  },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules"]
+    "inlineSourceMap": true,
+    "removeComments": true,
+    "outDir": "./dist",
+    "rootDir": "src"
+  }
 }

@@ -7,7 +7,6 @@ const execAsync = promisify(exec)
 const config = {
   ichiranTimeout: parseInt(process.env.ICHIRAN_TIMEOUT ?? '30000'),
   maxTextLength: parseInt(process.env.MAX_TEXT_LENGTH ?? '10000'),
-  maxConcurrent: parseInt(process.env.ICHIRAN_MAX_CONCURRENT ?? '10'),
 }
 
 // Error types
@@ -57,6 +56,26 @@ export interface RomanizeOptions {
 }
 
 /**
+ * Get the appropriate container name for the current environment
+ */
+function getContainerName(): string {
+  // If explicitly set via environment variable, use that
+  if (process.env.ICHIRAN_CONTAINER_NAME) {
+    return process.env.ICHIRAN_CONTAINER_NAME
+  }
+
+  // If we're running inside Docker Compose network, use service name
+  if (process.env.NODE_ENV === 'production' || process.env.DOCKER_COMPOSE) {
+    return 'main'
+  }
+
+  // For local development, try to detect the actual container name
+  // This is a fallback that tries common naming patterns
+  const projectName = process.env.COMPOSE_PROJECT_NAME ?? 'ichiran'
+  return `${projectName}-main-1`
+}
+
+/**
  * Execute Ichiran CLI command
  */
 async function executeIchiranCommand(args: string[]): Promise<string> {
@@ -67,7 +86,8 @@ async function executeIchiranCommand(args: string[]): Promise<string> {
       !process.env.CI &&
       !process.env.NODE_ENV?.includes('test')
     const dockerFlags = isInteractive ? '-it' : ''
-    const command = `docker exec ${dockerFlags} ichiran-main-1 ichiran-cli ${args.join(' ')}`
+    const containerName = getContainerName()
+    const command = `docker exec ${dockerFlags} ${containerName} ichiran-cli ${args.join(' ')}`
     const { stdout, stderr } = await execAsync(command, {
       timeout: config.ichiranTimeout,
       maxBuffer: 1024 * 1024, // 1MB buffer
@@ -90,9 +110,11 @@ async function executeIchiranCommand(args: string[]): Promise<string> {
         )
       }
       if (error.message.includes('No such container')) {
+        const containerName = getContainerName()
         throw new IchiranError(
-          'Ichiran container not running. Start with: docker-compose up -d',
+          `Ichiran container '${containerName}' not running. Start with: docker-compose up -d`,
           'ICHIRAN_UNAVAILABLE',
+          { containerName },
         )
       }
     }

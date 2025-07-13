@@ -8,8 +8,8 @@ const config = tseslint.config([
   {
     ignores: [
       'node_modules/**/*',
-      'dist-tsc/**/*',
       'dist/**/*',
+      'build/**/*',
       'coverage/**/*',
       '*.config.mjs',
     ],
