@@ -15,8 +15,7 @@ const config = {
     '@modelcontextprotocol/sdk/types.js',
     'zod',
     'zod-to-json-schema',
-    'child_process',
-    'util',
+    'zx',
   ],
   plugins: [json(), terser()],
 }

@@ -53,7 +53,23 @@ export function cleanupRateLimits(): void {
 }
 
 // Clean up every 5 minutes
-setInterval(cleanupRateLimits, 5 * 60 * 1000)
+let cleanupInterval: NodeJS.Timeout | null = null
+
+export function startCleanupInterval(): void {
+  cleanupInterval ??= setInterval(cleanupRateLimits, 5 * 60 * 1000)
+}
+
+export function stopCleanupInterval(): void {
+  if (cleanupInterval !== null) {
+    clearInterval(cleanupInterval)
+    cleanupInterval = null
+  }
+}
+
+// Start cleanup interval by default (production mode)
+if (process.env.NODE_ENV !== 'test') {
+  startCleanupInterval()
+}
 
 /**
  * Standard error handler for MCP tool responses

@@ -25,7 +25,7 @@
     "format": "prettier --write --cache . && eslint . --cache --fix",
     "lint": "eslint . --cache --quiet",
     "lint:types": "tsc --skipLibCheck --noEmit",
-    "test": "npm run inspector:cli -- --method tools/call --tool-name health_check && jest --config=jest.config.mjs --coverage",
+    "test": "npm run inspector:cli -- --method tools/call --tool-name health_check && jest --config=jest.config.mjs --coverage --no-cache --detectOpenHandles",
     "check": "npm run format && npm run lint && npm run lint:types && npm run test"
   },
   "dependencies": {

@@ -27,6 +27,11 @@ const expressionSchema = z.string().min(1)
  * Execute ichiran-cli command in container
  */
 async function exec(args: string[]): Promise<string> {
+  const startTime = Date.now()
+  const command = `docker exec ${config.containerName} ichiran-cli ${args.join(' ')}`
+
+  console.error(`[ICHIRAN] Executing command: ${command}`)
+
   try {
     $.verbose = false
 
@@ -34,6 +39,22 @@ async function exec(args: string[]): Promise<string> {
       timeout: config.timeout,
       nothrow: true,
     })`docker exec ${config.containerName} ichiran-cli ${args}`
+
+    const duration = Date.now() - startTime
+
+    // Log command execution details
+    console.error(`[ICHIRAN] Command completed in ${duration.toString()}ms`)
+    console.error(
+      `[ICHIRAN] Exit code: ${result.exitCode?.toString() ?? 'unknown'}`,
+    )
+
+    if (result.stdout) {
+      console.error(`[ICHIRAN] STDOUT: ${result.stdout.trim()}`)
+    }
+
+    if (result.stderr) {
+      console.error(`[ICHIRAN] STDERR: ${result.stderr.trim()}`)
+    }
 
     if (result.exitCode !== 0) {
       if (result.stderr.includes('No such container')) {
@@ -51,6 +72,12 @@ async function exec(args: string[]): Promise<string> {
 
     return result.stdout.trim()
   } catch (error) {
+    const duration = Date.now() - startTime
+    console.error(`[ICHIRAN] Command failed after ${duration.toString()}ms`)
+    console.error(
+      `[ICHIRAN] Error: ${error instanceof Error ? error.message : String(error)}`,
+    )
+
     if (error instanceof IchiranError) {
       throw error
     }
@@ -81,6 +108,75 @@ export async function romanize(text: string): Promise<string> {
 export async function romanizeWithInfo(text: string): Promise<string> {
   const validText = textSchema.parse(text)
   return await exec(['-i', validText])
+}
+
+/**
+ * Romanization with specific scheme (using Lisp evaluation for consistency)
+ */
+export async function romanizeWithScheme(
+  text: string,
+  scheme: 'hepburn' | 'kunrei' | 'passport' = 'hepburn',
+): Promise<string> {
+  const validText = textSchema.parse(text)
+
+  // Map scheme names to Ichiran's internal romanization methods
+  const schemeMap = {
+    hepburn: '*hepburn-traditional*',
+    kunrei: '*kunrei-siki*',
+    passport: '*hepburn-passport*',
+  }
+
+  const ichiranMethod = schemeMap[scheme]
+
+  // Use Lisp evaluation to call romanize with specific method
+  const lispExpression = `(ichiran:romanize "${validText}" :method ${ichiranMethod})`
+
+  const result = await exec(['-e', lispExpression])
+  return cleanEvalOutput(result)
+}
+
+/**
+ * Romanization with scheme and dictionary information
+ */
+export async function romanizeWithSchemeAndInfo(
+  text: string,
+  scheme: 'hepburn' | 'kunrei' | 'passport' = 'hepburn',
+): Promise<string> {
+  const validText = textSchema.parse(text)
+
+  const schemeMap = {
+    hepburn: '*hepburn-traditional*',
+    kunrei: '*kunrei-siki*',
+    passport: '*hepburn-passport*',
+  }
+
+  const ichiranMethod = schemeMap[scheme]
+
+  // Use Lisp evaluation to call romanize with method and info
+  const lispExpression = `(ichiran:romanize "${validText}" :method ${ichiranMethod} :with-info t)`
+
+  const result = await exec(['-e', lispExpression])
+  return cleanEvalOutput(result)
+}
+
+/**
+ * Clean output from Lisp evaluation (removes quotes and NIL)
+ */
+function cleanEvalOutput(output: string): string {
+  // Remove leading/trailing quotes and trim whitespace
+  let cleaned = output.trim()
+
+  // Remove quotes at the beginning and end
+  if (cleaned.startsWith('"') && cleaned.includes('" \n')) {
+    cleaned = cleaned.substring(1, cleaned.indexOf('" \n'))
+  }
+
+  // Handle case where there's just quoted content
+  if (cleaned.startsWith('"') && cleaned.endsWith('"')) {
+    cleaned = cleaned.slice(1, -1)
+  }
+
+  return cleaned.trim()
 }
 
 /**
@@ -132,8 +228,3 @@ export async function healthCheck(): Promise<boolean> {
 export async function help(): Promise<string> {
   return await exec(['--help'])
 }
-
-// Export convenience functions for backwards compatibility
-export const romanizeJapanese = romanize
-export const parseJapaneseText = analyze
-export const analyzeKanji = analyze

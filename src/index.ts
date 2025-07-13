@@ -58,7 +58,7 @@ const ParseJapaneseTextSchema = z.object({
         .number()
         .min(1)
         .max(10)
-        .default(5)
+        .default(2)
         .describe('Maximum number of segmentation alternatives'),
     })
     .optional(),
@@ -66,20 +66,22 @@ const ParseJapaneseTextSchema = z.object({
 
 const RomanizeJapaneseSchema = z.object({
   text: z.string().min(1).max(10000).describe('Japanese text to romanize'),
-  scheme: z
-    .enum(['hepburn', 'kunrei', 'passport'])
-    .default('hepburn')
-    .describe('Romanization scheme'),
-  includeInfo: z
-    .boolean()
-    .default(false)
-    .describe('Include word information with romanization'),
+  options: z
+    .object({
+      scheme: z
+        .enum(['hepburn', 'kunrei', 'passport'])
+        .default('hepburn')
+        .describe('Romanization scheme'),
+      includeInfo: z
+        .boolean()
+        .default(false)
+        .describe('Include word information with romanization'),
+    })
+    .optional(),
 })
 
 const AnalyzeKanjiSchema = z.object({
-  kanji: z
-    .union([z.string().min(1).max(100), z.array(z.string()).min(1).max(50)])
-    .describe('Kanji character(s) to analyze'),
+  text: z.string().min(1).max(1).describe('Kanji character to analyze'),
 })
 
 const HealthCheckSchema = z.object({})
@@ -144,8 +146,23 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         break
       }
       case 'analyze_kanji': {
-        const params = validateToolInput(AnalyzeKanjiSchema, args, name)
-        result = await analyzeKanji(params)
+        try {
+          const params = validateToolInput(AnalyzeKanjiSchema, args, name)
+          result = await analyzeKanji(params)
+        } catch (error) {
+          if (error instanceof Error && error.message.includes('Required')) {
+            return {
+              content: [
+                {
+                  type: 'text',
+                  text: 'Error: Missing required parameter "kanji". Please provide a kanji character or characters to analyze.\n\nExample usage:\n- Single kanji: {"kanji": "事"}\n- Multiple kanji: {"kanji": ["事", "業"]}',
+                },
+              ],
+              isError: true,
+            }
+          }
+          throw error
+        }
         break
       }
       case 'health_check': {
@@ -194,15 +211,27 @@ async function romanizeJapanese(
   params: z.infer<typeof RomanizeJapaneseSchema>,
 ) {
   const sanitizedText = sanitizeJapaneseText(params.text)
+  const scheme = params.options?.scheme ?? 'hepburn'
+  const includeInfo = params.options?.includeInfo ?? false
 
   return await ichiranCircuitBreaker.execute(async () => {
-    const result = await withTimeout(
-      params.includeInfo
-        ? ichiran.romanizeWithInfo(sanitizedText)
-        : ichiran.romanize(sanitizedText),
-      config.timeout,
-      'romanizeJapanese',
-    )
+    let result: string
+
+    if (includeInfo) {
+      // Use scheme-specific function with info (consistent -e approach)
+      result = await withTimeout(
+        ichiran.romanizeWithSchemeAndInfo(sanitizedText, scheme),
+        config.timeout,
+        'romanizeJapanese',
+      )
+    } else {
+      // Use scheme-specific function without info (consistent -e approach)
+      result = await withTimeout(
+        ichiran.romanizeWithScheme(sanitizedText, scheme),
+        config.timeout,
+        'romanizeJapanese',
+      )
+    }
 
     return {
       content: [
@@ -217,11 +246,10 @@ async function romanizeJapanese(
 
 async function analyzeKanji(params: z.infer<typeof AnalyzeKanjiSchema>) {
   return await ichiranCircuitBreaker.execute(async () => {
-    const kanjiText = Array.isArray(params.kanji)
-      ? params.kanji.join('')
-      : params.kanji
+    const sanitizedText = sanitizeJapaneseText(params.text)
+
     const result = await withTimeout(
-      ichiran.analyze(kanjiText),
+      ichiran.analyze(sanitizedText),
       config.timeout,
       'analyzeKanji',
     )

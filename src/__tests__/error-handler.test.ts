@@ -12,6 +12,7 @@ import {
   cleanupRateLimits,
   handleToolError,
   sanitizeJapaneseText,
+  stopCleanupInterval,
   validateToolInput,
   withTimeout,
 } from '../error-handler.js'
@@ -35,6 +36,7 @@ describe('error-handler module', () => {
   afterEach(() => {
     // Clean up after each test
     jest.clearAllMocks()
+    stopCleanupInterval()
   })
 
   describe('checkRateLimit', () => {
