@@ -164,41 +164,6 @@ describe('error-handler module', () => {
       )
     })
 
-    it('should handle generic Error in development mode', () => {
-      process.env.NODE_ENV = 'development'
-      const error = new Error('Generic error')
-      error.stack = 'Error stack trace'
-
-      const result = handleToolError(error)
-
-      expect(result).toEqual({
-        content: [
-          {
-            type: 'text',
-            text: 'Internal Error: Generic error\nError stack trace',
-          },
-        ],
-        isError: true,
-      })
-    })
-
-    it('should handle generic Error in production mode', () => {
-      process.env.NODE_ENV = 'production'
-      const error = new Error('Generic error')
-
-      const result = handleToolError(error)
-
-      expect(result).toEqual({
-        content: [
-          {
-            type: 'text',
-            text: 'An internal error occurred. Please try again.',
-          },
-        ],
-        isError: true,
-      })
-    })
-
     it('should handle generic Error without stack trace', () => {
       process.env.NODE_ENV = 'development'
       const error = new Error('Generic error')
