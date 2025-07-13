@@ -1,4 +1,5 @@
 // @ts-check
+import json from '@rollup/plugin-json'
 import terser from '@rollup/plugin-terser'
 
 /** @type {import('rollup').RollupOptions} */
@@ -17,7 +18,7 @@ const config = {
     'child_process',
     'util',
   ],
-  plugins: [terser()],
+  plugins: [json(), terser()],
 }
 
 export default config

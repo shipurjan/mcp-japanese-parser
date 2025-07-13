@@ -1,279 +1,139 @@
-import { exec } from 'child_process'
-import { promisify } from 'util'
+import { z } from 'zod'
+import { $ } from 'zx'
 
-const execAsync = promisify(exec)
-
-// Configuration from environment
-const config = {
-  ichiranTimeout: parseInt(process.env.ICHIRAN_TIMEOUT ?? '30000'),
-  maxTextLength: parseInt(process.env.MAX_TEXT_LENGTH ?? '10000'),
-}
-
-// Error types
 export class IchiranError extends Error {
   constructor(
     message: string,
     public code: string,
-    public details?: object,
+    public details?: unknown,
   ) {
     super(message)
     this.name = 'IchiranError'
   }
 }
 
-// Data structures based on CLAUDE.md specification
-export interface ParsedWord {
-  text: string
-  kana?: string
-  romanization: string
-  partOfSpeech: string[]
-  definitions: Definition[]
-  score: number
-  start: number
-  end: number
+// Configuration
+const config = {
+  timeout: parseInt(process.env.ICHIRAN_TIMEOUT ?? '30000'),
+  containerName: process.env.ICHIRAN_CONTAINER_NAME ?? 'ichiran-main-1',
 }
 
-export interface Definition {
-  meaning: string
-  tags: string[]
-  examples?: string[]
-}
-
-export interface Segmentation {
-  words: ParsedWord[]
-  confidence: number
-  alternatives: number
-}
-
-export interface ParseOptions {
-  includeInfo?: boolean
-  limit?: number
-}
-
-export interface RomanizeOptions {
-  scheme?: 'hepburn' | 'kunrei' | 'passport'
-  includeInfo?: boolean
-}
+// Validation schemas
+const textSchema = z.string().min(1).max(10000)
+const limitSchema = z.number().int().min(1).max(20)
+const expressionSchema = z.string().min(1)
 
 /**
- * Get the appropriate container name for the current environment
+ * Execute ichiran-cli command in container
  */
-function getContainerName(): string {
-  // If explicitly set via environment variable, use that
-  if (process.env.ICHIRAN_CONTAINER_NAME) {
-    return process.env.ICHIRAN_CONTAINER_NAME
-  }
-
-  // If we're running inside Docker Compose network, use service name
-  if (process.env.NODE_ENV === 'production' || process.env.DOCKER_COMPOSE) {
-    return 'main'
-  }
-
-  // For local development, try to detect the actual container name
-  // This is a fallback that tries common naming patterns
-  const projectName = process.env.COMPOSE_PROJECT_NAME ?? 'ichiran'
-  return `${projectName}-main-1`
-}
-
-/**
- * Execute Ichiran CLI command
- */
-async function executeIchiranCommand(args: string[]): Promise<string> {
+async function exec(args: string[]): Promise<string> {
   try {
-    // Use non-interactive mode for tests and CI environments
-    const isInteractive =
-      process.stdout.isTTY &&
-      !process.env.CI &&
-      !process.env.NODE_ENV?.includes('test')
-    const dockerFlags = isInteractive ? '-it' : ''
-    const containerName = getContainerName()
-    const command = `docker exec ${dockerFlags} ${containerName} ichiran-cli ${args.join(' ')}`
-    const { stdout, stderr } = await execAsync(command, {
-      timeout: config.ichiranTimeout,
-      maxBuffer: 1024 * 1024, // 1MB buffer
-    })
+    $.verbose = false
 
-    if (stderr.trim()) {
-      console.warn('Ichiran stderr:', stderr)
+    const result = await $({
+      timeout: config.timeout,
+      nothrow: true,
+    })`docker exec ${config.containerName} ichiran-cli ${args}`
+
+    if (result.exitCode !== 0) {
+      if (result.stderr.includes('No such container')) {
+        throw new IchiranError(
+          `Container '${config.containerName}' not running`,
+          'CONTAINER_NOT_FOUND',
+        )
+      }
+      throw new IchiranError(
+        `Command failed: ${result.stderr}`,
+        'COMMAND_FAILED',
+        { exitCode: result.exitCode },
+      )
     }
 
-    return stdout.trim()
+    return result.stdout.trim()
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.message.includes('timeout')) {
-        throw new IchiranError('Processing timeout exceeded', 'ICHIRAN_TIMEOUT')
-      }
-      if (error.message.includes('ECONNREFUSED')) {
-        throw new IchiranError(
-          'Ichiran service unavailable',
-          'ICHIRAN_UNAVAILABLE',
-        )
-      }
-      if (error.message.includes('No such container')) {
-        const containerName = getContainerName()
-        throw new IchiranError(
-          `Ichiran container '${containerName}' not running. Start with: docker-compose up -d`,
-          'ICHIRAN_UNAVAILABLE',
-          { containerName },
-        )
-      }
+    if (error instanceof IchiranError) {
+      throw error
     }
+
+    if (error instanceof Error && error.message.includes('timeout')) {
+      throw new IchiranError('Processing timeout exceeded', 'TIMEOUT')
+    }
+
     throw new IchiranError(
-      `Ichiran execution failed: ${error instanceof Error ? error.message : String(error)}`,
-      'PROCESSING_ERROR',
+      `Execution failed: ${error instanceof Error ? error.message : String(error)}`,
+      'EXECUTION_ERROR',
       { originalError: error },
     )
   }
 }
 
 /**
- * Validate Japanese text input
+ * Default romanization (calls ichiran:romanize)
  */
-export function validateJapaneseText(text: string): boolean {
-  if (!text || typeof text !== 'string') {
-    throw new IchiranError('Text must be a non-empty string', 'INVALID_INPUT')
-  }
-
-  if (text.length > config.maxTextLength) {
-    throw new IchiranError(
-      `Text too long. Maximum length: ${config.maxTextLength.toString()}`,
-      'INVALID_INPUT',
-    )
-  }
-
-  // Check for Japanese characters (Hiragana, Katakana, Kanji)
-  const japaneseRegex = /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF]/
-  if (!japaneseRegex.test(text)) {
-    throw new IchiranError(
-      'Text must contain Japanese characters',
-      'INVALID_INPUT',
-    )
-  }
-
-  return true
+export async function romanize(text: string): Promise<string> {
+  const validText = textSchema.parse(text)
+  return await exec([validText])
 }
 
 /**
- * Parse Japanese text with dictionary information
+ * Romanization with dictionary information (-i/--with-info)
  */
-export async function parseJapaneseText(
+export async function romanizeWithInfo(text: string): Promise<string> {
+  const validText = textSchema.parse(text)
+  return await exec(['-i', validText])
+}
+
+/**
+ * Full analysis as JSON (-f/--full)
+ */
+export async function analyze(text: string): Promise<unknown> {
+  const validText = textSchema.parse(text)
+  const result = await exec(['-f', validText])
+  return JSON.parse(result)
+}
+
+/**
+ * Full analysis with multiple segmentation alternatives (-f -l/--full --limit)
+ */
+export async function analyzeWithLimit(
   text: string,
-  options: ParseOptions = {},
-): Promise<Segmentation> {
-  validateJapaneseText(text)
+  limit: number,
+): Promise<unknown> {
+  const validText = textSchema.parse(text)
+  const validLimit = limitSchema.parse(limit)
 
-  const { limit = 5 } = options
-  const args = ['-f']
-
-  if (limit > 1) {
-    args.push('-l', limit.toString())
-  }
-
-  args.push(`"${text}"`)
-
-  try {
-    const result = await executeIchiranCommand(args)
-
-    // Parse Ichiran's JSON output
-    const parsed = JSON.parse(result) as {
-      words?: ParsedWord[]
-      confidence?: number
-      alternatives?: number
-    }
-
-    // Transform to our interface format
-    return {
-      words: parsed.words ?? [],
-      confidence: parsed.confidence ?? 0.5,
-      alternatives: parsed.alternatives ?? 0,
-    }
-  } catch (error) {
-    if (error instanceof IchiranError) {
-      throw error
-    }
-    throw new IchiranError(
-      `Failed to parse Japanese text: ${String(error)}`,
-      'PROCESSING_ERROR',
-    )
-  }
+  const result = await exec(['-f', '-l', validLimit.toString(), validText])
+  return JSON.parse(result)
 }
 
 /**
- * Romanize Japanese text
+ * Evaluate arbitrary Lisp expression (-e/--eval)
  */
-export async function romanizeJapanese(
-  text: string,
-  options: RomanizeOptions = {},
-): Promise<string> {
-  validateJapaneseText(text)
-
-  const { scheme = 'hepburn', includeInfo = false } = options
-  const args = []
-
-  if (includeInfo) {
-    args.push('-i')
-  }
-
-  // Note: Ichiran's romanization scheme configuration may need adjustment
-  // based on actual CLI interface
-  if (scheme !== 'hepburn') {
-    console.warn(`Romanization scheme '${scheme}' may not be fully supported`)
-  }
-
-  args.push(`"${text}"`)
-
-  try {
-    const result = await executeIchiranCommand(args)
-    return result
-  } catch (error) {
-    if (error instanceof IchiranError) {
-      throw error
-    }
-    throw new IchiranError(
-      `Failed to romanize Japanese text: ${String(error)}`,
-      'PROCESSING_ERROR',
-    )
-  }
+export async function evaluate(expression: string): Promise<string> {
+  const validExpression = expressionSchema.parse(expression)
+  return await exec(['-e', validExpression])
 }
 
 /**
- * Get detailed kanji analysis
- */
-export async function analyzeKanji(kanji: string | string[]): Promise<object> {
-  const kanjiText = Array.isArray(kanji) ? kanji.join('') : kanji
-
-  // Validate input contains kanji
-  const kanjiRegex = /[\u4E00-\u9FAF]/
-  if (!kanjiRegex.test(kanjiText)) {
-    throw new IchiranError(
-      'Input must contain kanji characters',
-      'INVALID_INPUT',
-    )
-  }
-
-  try {
-    // Use full analysis mode to get kanji information
-    const result = await executeIchiranCommand(['-f', `"${kanjiText}"`])
-    return JSON.parse(result) as object
-  } catch (error) {
-    if (error instanceof IchiranError) {
-      throw error
-    }
-    throw new IchiranError(
-      `Failed to analyze kanji: ${String(error)}`,
-      'PROCESSING_ERROR',
-    )
-  }
-}
-
-/**
- * Health check for Ichiran service
+ * Health check - test if service is available
  */
 export async function healthCheck(): Promise<boolean> {
   try {
-    await executeIchiranCommand(['--help'])
+    await exec(['--help'])
     return true
   } catch {
     return false
   }
 }
+
+/**
+ * Get help information (-h/--help)
+ */
+export async function help(): Promise<string> {
+  return await exec(['--help'])
+}
+
+// Export convenience functions for backwards compatibility
+export const romanizeJapanese = romanize
+export const parseJapaneseText = analyze
+export const analyzeKanji = analyze

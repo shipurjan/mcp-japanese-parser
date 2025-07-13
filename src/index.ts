@@ -9,6 +9,7 @@ import {
 } from '@modelcontextprotocol/sdk/types.js'
 import { z } from 'zod'
 import { zodToJsonSchema } from 'zod-to-json-schema'
+import pkg from '../package.json' with { type: 'json' }
 import {
   CircuitBreaker,
   checkRateLimit,
@@ -17,13 +18,7 @@ import {
   validateToolInput,
   withTimeout,
 } from './error-handler.js'
-import {
-  type ParseOptions,
-  type RomanizeOptions,
-  analyzeKanji as ichiranAnalyzeKanji,
-  parseJapaneseText as ichiranParseText,
-  romanizeJapanese as ichiranRomanizeText,
-} from './ichiran.js'
+import * as ichiran from './ichiran.js'
 
 // Type definition for tool input schema
 type ToolInput = z.infer<typeof ToolSchema.shape.inputSchema>
@@ -173,35 +168,22 @@ async function parseJapaneseText(
   params: z.infer<typeof ParseJapaneseTextSchema>,
 ) {
   const sanitizedText = sanitizeJapaneseText(params.text)
-  const options: ParseOptions = params.options ?? {}
+  const limit = params.options?.limit ?? 5
 
   return await ichiranCircuitBreaker.execute(async () => {
     const result = await withTimeout(
-      ichiranParseText(sanitizedText, options),
+      limit > 1
+        ? ichiran.analyzeWithLimit(sanitizedText, limit)
+        : ichiran.analyze(sanitizedText),
       config.timeout,
       'parseJapaneseText',
     )
-
-    // Format the result for MCP response
-    const formattedWords = result.words
-      .map((word) => {
-        const definitions = word.definitions
-          .map((def) => `${def.meaning} (${def.tags.join(', ')})`)
-          .join('; ')
-
-        return `${word.text} [${word.kana ?? word.romanization}] - ${definitions}`
-      })
-      .join('\n')
 
     return {
       content: [
         {
           type: 'text',
-          text:
-            `Japanese Text Analysis for: "${sanitizedText}"\n\n` +
-            `Confidence: ${(result.confidence * 100).toFixed(1)}%\n` +
-            `Alternatives available: ${result.alternatives.toString()}\n\n` +
-            `Word Breakdown:\n${formattedWords}`,
+          text: JSON.stringify(result),
         },
       ],
     }
@@ -212,14 +194,12 @@ async function romanizeJapanese(
   params: z.infer<typeof RomanizeJapaneseSchema>,
 ) {
   const sanitizedText = sanitizeJapaneseText(params.text)
-  const options: RomanizeOptions = {
-    scheme: params.scheme,
-    includeInfo: params.includeInfo,
-  }
 
   return await ichiranCircuitBreaker.execute(async () => {
     const result = await withTimeout(
-      ichiranRomanizeText(sanitizedText, options),
+      params.includeInfo
+        ? ichiran.romanizeWithInfo(sanitizedText)
+        : ichiran.romanize(sanitizedText),
       config.timeout,
       'romanizeJapanese',
     )
@@ -228,7 +208,7 @@ async function romanizeJapanese(
       content: [
         {
           type: 'text',
-          text: `Romanization (${params.scheme}):\n${result}`,
+          text: result,
         },
       ],
     }
@@ -237,8 +217,11 @@ async function romanizeJapanese(
 
 async function analyzeKanji(params: z.infer<typeof AnalyzeKanjiSchema>) {
   return await ichiranCircuitBreaker.execute(async () => {
+    const kanjiText = Array.isArray(params.kanji)
+      ? params.kanji.join('')
+      : params.kanji
     const result = await withTimeout(
-      ichiranAnalyzeKanji(params.kanji),
+      ichiran.analyze(kanjiText),
       config.timeout,
       'analyzeKanji',
     )
@@ -247,7 +230,7 @@ async function analyzeKanji(params: z.infer<typeof AnalyzeKanjiSchema>) {
       content: [
         {
           type: 'text',
-          text: `Kanji Analysis:\n${JSON.stringify(result, null, 2)}`,
+          text: JSON.stringify(result),
         },
       ],
     }
@@ -260,10 +243,8 @@ async function healthCheck(): Promise<{
     text: string
   }[]
 }> {
-  const { healthCheck: ichiranHealthCheck } = await import('./ichiran.js')
-
   const result = await withTimeout(
-    ichiranHealthCheck(),
+    ichiran.healthCheck(),
     5000, // 5 second timeout for health checks
     'healthCheck',
   )
@@ -274,11 +255,12 @@ async function healthCheck(): Promise<{
     content: [
       {
         type: 'text',
-        text:
-          `Ichiran Service Health: ${result ? '✓ Healthy' : '✗ Unhealthy'}\n` +
-          `Circuit Breaker: ${circuitBreakerState}\n` +
-          `Server Version: 0.1.0\n` +
-          `Environment: ${process.env.NODE_ENV ?? 'production'}`,
+        text: JSON.stringify({
+          healthy: result,
+          circuitBreakerState,
+          version: pkg.version,
+          environment: process.env.NODE_ENV ?? 'unknown',
+        }),
       },
     ],
   }
